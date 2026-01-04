@@ -9,7 +9,7 @@
     flex-direction:column;
     justify-content:center;
     align-items:center;
-    height:100vh;
+    min-height:100vh;
     font-family:sans-serif;
     background:#111;
     color:#eee;
@@ -25,16 +25,34 @@
 
   #prompt { font-size:4em; margin-bottom:20px; }
   #score  { font-size:1.5em; }
+  #menu { margin-bottom:20px; text-align:center; }
+  #menu label { margin:3px; display:inline-block; width:50px; text-align:center; }
+  #menu input[type="number"] { width:60px; }
+  #results { margin-top:20px; font-size:1.2em; text-align:left; max-width:400px; white-space:pre-wrap; }
 </style>
 </head>
 <body>
 
+<div id="menu">
+  <div>
+    <label>Select keys:</label><br>
+    <div id="keyToggles"></div>
+  </div>
+  <div>
+    <label>Session length:</label>
+    <input type="number" id="sessionLength" min="1" value="20">
+  </div>
+  <button id="startBtn">Start Session</button>
+</div>
+
 <div id="feedback"></div>
 <div id="prompt"></div>
 <div id="score">Hit Rate: 0%</div>
+<div id="results"></div>
+<button id="endBtn" style="display:none; margin-top:15px;">End Session</button>
 
 <script>
-const keys = [
+const allKeys = [
   'q','w','e','r','t',
   'a','s','d','f','g',
   'z','x','c','v','b',
@@ -42,58 +60,126 @@ const keys = [
   'shift','control','alt','tab','space'
 ];
 
-const goodMsgs = [
-  "Hell ya!", "Spot on!", "Nice finger!",
-  "Sweet!", "What a carry!"
-];
+const goodMsgs = ["Hell ya!", "Spot on!", "Nice finger!", "Sweet!", "What a carry!"];
+const badMsgs = ["Oof.", "God damn.", "Are you trying to feed?", "Yikes.", "This is griefing."];
 
-const badMsgs = [
-  "Oof.", "God damn.",
-  "Are you trying to feed?",
-  "Yikes.", "This is griefing."
-];
-
+let selectedKeys = [];
+let sessionLength = 20;
 let total = 0;
 let correct = 0;
 let streak = 0;
 let current = null;
+let keyStats = {};
 
+const keyTogglesEl = document.getElementById('keyToggles');
+const sessionLengthEl = document.getElementById('sessionLength');
+const startBtn = document.getElementById('startBtn');
+const endBtn = document.getElementById('endBtn');
+const feedback = document.getElementById('feedback');
+const promptEl = document.getElementById('prompt');
+const scoreEl = document.getElementById('score');
+const resultsEl = document.getElementById('results');
+const menuEl = document.getElementById('menu');
+
+// Build key toggle checkboxes
+allKeys.forEach(k => {
+  const label = document.createElement('label');
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.value = k;
+  checkbox.checked = true;
+  label.appendChild(checkbox);
+  label.appendChild(document.createTextNode(k.toUpperCase()));
+  keyTogglesEl.appendChild(label);
+});
+
+// Pick next random key
 function nextPrompt() {
-  current = keys[Math.floor(Math.random() * keys.length)];
-  document.getElementById('prompt').textContent = current.toUpperCase();
+  if (!selectedKeys.length) return;
+  current = selectedKeys[Math.floor(Math.random() * selectedKeys.length)];
+  promptEl.textContent = current.toUpperCase();
 }
 
-function start() {
+// Start session
+function startSession() {
+  // Read selections
+  selectedKeys = Array.from(keyTogglesEl.querySelectorAll('input:checked')).map(cb => cb.value);
+  if (!selectedKeys.length) {
+    alert("Select at least one key!");
+    return;
+  }
+  sessionLength = parseInt(sessionLengthEl.value) || 20;
+
+  // Initialize stats
+  total = 0;
+  correct = 0;
+  streak = 0;
+  keyStats = {};
+  selectedKeys.forEach(k => keyStats[k] = {hits:0, misses:0});
+
+  // UI
+  menuEl.style.display = 'none';
+  endBtn.style.display = 'inline-block';
+  feedback.textContent = '';
+  resultsEl.textContent = '';
+  scoreEl.textContent = 'Hit Rate: 0%';
+
   nextPrompt();
   document.addEventListener('keydown', handleKey);
 }
 
+// Handle key press
 function handleKey(e) {
   let pressed = e.key.toLowerCase();
   if (pressed === ' ') pressed = 'space';
 
   total++;
-  const feedback = document.getElementById('feedback');
+  if (!keyStats[pressed]) keyStats[pressed] = {hits:0, misses:0};
 
   if (pressed === current) {
     correct++;
     streak = Math.max(1, streak + 1);
     feedback.textContent = goodMsgs[Math.min(streak - 1, goodMsgs.length - 1)];
     feedback.className = 'good';
+    keyStats[current].hits++;
   } else {
     streak = Math.min(-1, streak - 1);
     feedback.textContent = badMsgs[Math.min(Math.abs(streak) - 1, badMsgs.length - 1)];
     feedback.className = 'bad';
+    keyStats[current].misses++;
   }
 
-  document.getElementById('score').textContent =
-    'Hit Rate: ' + Math.round((correct / total) * 100) + '%';
+  scoreEl.textContent = 'Hit Rate: ' + Math.round((correct / total) * 100) + '%';
 
-  nextPrompt();
+  if (total >= sessionLength) endSession();
+  else nextPrompt();
 }
 
-start();
+// End session and show stats
+function endSession() {
+  document.removeEventListener('keydown', handleKey);
+  promptEl.textContent = '';
+  feedback.textContent = 'Session Over!';
+  feedback.className = '';
+
+  let resultText = `Overall Accuracy: ${Math.round((correct / total) * 100)}%\n\nKey Miss Rates:\n`;
+  selectedKeys.forEach(k => {
+    const stat = keyStats[k];
+    const missRate = stat.misses + stat.hits === 0 ? 0 : Math.round(stat.misses / (stat.misses + stat.hits) * 100);
+    resultText += `${k.toUpperCase()}: ${missRate}%\n`;
+  });
+
+  resultsEl.textContent = resultText;
+
+  // Return to menu
+  menuEl.style.display = 'block';
+  endBtn.style.display = 'none';
+}
+
+// Event listeners
+startBtn.addEventListener('click', startSession);
+endBtn.addEventListener('click', endSession);
 </script>
+
 </body>
 </html>
-
