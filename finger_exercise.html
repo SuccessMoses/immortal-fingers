@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Keyboard Reflex Trainer</title>
+<style>
+  body {
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    font-family:sans-serif;
+    background:#111;
+    color:#eee;
+  }
+  #feedback {
+    font-size:2em;
+    margin-bottom:10px;
+    height:2em;
+    text-align:center;
+  }
+  .good { color: #0f0; }
+  .bad  { color: #f00; }
+
+  #prompt { font-size:4em; margin-bottom:20px; }
+  #score  { font-size:1.5em; }
+</style>
+</head>
+<body>
+
+<div id="feedback"></div>
+<div id="prompt"></div>
+<div id="score">Hit Rate: 0%</div>
+
+<script>
+const keys = [
+  'q','w','e','r','t',
+  'a','s','d','f','g',
+  'z','x','c','v','b',
+  '1','2','3','4','5',
+  'shift','control','alt','tab','space'
+];
+
+const goodMsgs = [
+  "Hell ya!", "Spot on!", "Nice finger!",
+  "Sweet!", "What a carry!"
+];
+
+const badMsgs = [
+  "Oof.", "God damn.",
+  "Are you trying to feed?",
+  "Yikes.", "This is griefing."
+];
+
+let total = 0;
+let correct = 0;
+let streak = 0;
+let current = null;
+
+function nextPrompt() {
+  current = keys[Math.floor(Math.random() * keys.length)];
+  document.getElementById('prompt').textContent = current.toUpperCase();
+}
+
+function start() {
+  nextPrompt();
+  document.addEventListener('keydown', handleKey);
+}
+
+function handleKey(e) {
+  let pressed = e.key.toLowerCase();
+  if (pressed === ' ') pressed = 'space';
+
+  total++;
+  const feedback = document.getElementById('feedback');
+
+  if (pressed === current) {
+    correct++;
+    streak = Math.max(1, streak + 1);
+    feedback.textContent = goodMsgs[Math.min(streak - 1, goodMsgs.length - 1)];
+    feedback.className = 'good';
+  } else {
+    streak = Math.min(-1, streak - 1);
+    feedback.textContent = badMsgs[Math.min(Math.abs(streak) - 1, badMsgs.length - 1)];
+    feedback.className = 'bad';
+  }
+
+  document.getElementById('score').textContent =
+    'Hit Rate: ' + Math.round((correct / total) * 100) + '%';
+
+  nextPrompt();
+}
+
+start();
+</script>
+</body>
+</html>
+
