@@ -28,6 +28,8 @@
   #menu { margin-bottom:20px; text-align:center; }
   #menu label { margin:3px; display:inline-block; width:50px; text-align:center; }
   #menu input[type="number"] { width:60px; }
+  #keyToggles { display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; max-width:400px; margin:10px auto; }
+  #keyToggles label { width:auto; }
   #results { margin-top:20px; font-size:1.2em; text-align:left; max-width:400px; white-space:pre-wrap; }
 </style>
 </head>
@@ -163,10 +165,16 @@ function endSession() {
   feedback.className = '';
 
   let resultText = `Overall Accuracy: ${Math.round((correct / total) * 100)}%\n\nKey Miss Rates:\n`;
-  selectedKeys.forEach(k => {
+  
+  // Calculate miss rates and sort descending
+  const keyMissRates = selectedKeys.map(k => {
     const stat = keyStats[k];
     const missRate = stat.misses + stat.hits === 0 ? 0 : Math.round(stat.misses / (stat.misses + stat.hits) * 100);
-    resultText += `${k.toUpperCase()}: ${missRate}%\n`;
+    return { key: k, missRate };
+  }).sort((a, b) => b.missRate - a.missRate);
+  
+  keyMissRates.forEach(item => {
+    resultText += `${item.key.toUpperCase()}: ${item.missRate}%\n`;
   });
 
   resultsEl.textContent = resultText;
